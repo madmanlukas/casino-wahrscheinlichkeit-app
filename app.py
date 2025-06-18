@@ -33,6 +33,8 @@ def train_model_from_history():
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(np.array(X), np.array(y))
         st.session_state.model = model
+    else:
+        st.session_state.model = None
 
 def add_draw(color):
     st.session_state.history_all.append(color)
@@ -53,12 +55,8 @@ def reset_all():
     st.session_state.trained_X = []
     st.session_state.trained_y = []
 
-# Anzeige letzter 5 Züge
-st.subheader("Letzte 5 Ziehungen:")
-st.markdown("".join([emoji_map[c] for c in st.session_state.history_all[-5:]]))
-
-# Buttons inkl. Reset mit Neuladen
-col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+# Reset-Button ohne rerun
+col1, col2, col3, col4 = st.columns([1,1,1,1])
 with col1:
     if st.button("🟥 Rot"):
         add_draw("red")
@@ -71,7 +69,11 @@ with col3:
 with col4:
     if st.button("🧹 Reset"):
         reset_all()
-        st.experimental_rerun()
+        st.success("App wurde zurückgesetzt.")
+
+# Anzeige letzter 5 Züge
+st.subheader("Letzte 5 Ziehungen:")
+st.markdown("".join([emoji_map[c] for c in st.session_state.history_all[-5:]]))
 
 # Vorhersage
 if len(st.session_state.history_all) < 6:
