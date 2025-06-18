@@ -1,112 +1,85 @@
-import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
-import os
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-st.set_page_config(page_title="Rot vs. Schwarz – Empirische & Erwartete Wahrscheinlichkeiten", layout="centered")
-st.title("🎲 Rot oder Schwarz – Wahrscheinlichkeiten mit Kartenbildern")
+export default function App() {
+  const [history, setHistory] = useState([]);
+  
+  const handleDraw = (color) => {
+    const newHistory = [...history, color].slice(-5); // nur die letzten 5
+    setHistory(newHistory);
+  };
 
-def create_ace_card(color):
-    img = Image.new("RGBA", (100,140), "white")  # weißer Hintergrund
-    draw = ImageDraw.Draw(img)
-    border_color = "red" if color == "rot" else "black"
-    text_color = "red" if color == "rot" else "black"
+  const handleUndo = () => {
+    setHistory(history.slice(0, -1));
+  };
 
-    draw.rectangle([5,5,95,135], outline=border_color, width=4)
-    try:
-        font = ImageFont.truetype("arial.ttf", 70)
-    except:
-        font = ImageFont.load_default()
-    w, h = draw.textsize("A", font=font)
-    draw.text(((100 - w)/2, (140 - h)/2 - 10), "A", fill=text_color, font=font)
-    return img
+  const redCount = history.filter(c => c === 'red').length;
+  const blackCount = history.filter(c => c === 'black').length;
+  const total = redCount + blackCount;
 
-img_rot_path = "ass_rot.png"
-img_schwarz_path = "ass_schwarz.png"
+  const expectedProbability = {
+    red: 0.5,
+    black: 0.5,
+  };
 
-if not os.path.exists(img_rot_path):
-    create_ace_card("rot").save(img_rot_path)
-if not os.path.exists(img_schwarz_path):
-    create_ace_card("schwarz").save(img_schwarz_path)
+  const actualProbability = {
+    red: total > 0 ? redCount / total : 0.5,
+    black: total > 0 ? blackCount / total : 0.5,
+  };
 
-img_rot = Image.open(img_rot_path)
-img_schwarz = Image.open(img_schwarz_path)
+  const renderEmoji = (color) => {
+    return color === 'red' ? '🟥' : '⬛';
+  };
 
-if "verlauf" not in st.session_state:
-    st.session_state.verlauf = []
-if "rot" not in st.session_state:
-    st.session_state.rot = 0
-if "schwarz" not in st.session_state:
-    st.session_state.schwarz = 0
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Schwarz oder Rot – Wahrscheinlichkeitsrechner</Text>
 
-def ziehe_farbe(farbe):
-    st.session_state.verlauf.append(farbe)
-    if len(st.session_state.verlauf) > 5:
-        st.session_state.verlauf.pop(0)
-    if farbe == "rot":
-        st.session_state.rot += 1
-    else:
-        st.session_state.schwarz += 1
+      <View style={styles.historyContainer}>
+        <Text style={styles.historyLabel}>Letzte 5 Ziehungen:</Text>
+        <Text style={styles.history}>
+          {history.map((color, index) => (
+            <Text key={index}>{renderEmoji(color)} </Text>
+          ))}
+        </Text>
+      </View>
 
-def rueckgaengig():
-    if st.session_state.verlauf:
-        letzte = st.session_state.verlauf.pop()
-        if letzte == "rot":
-            st.session_state.rot -= 1
-        else:
-            st.session_state.schwarz -= 1
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.redButton} onPress={() => handleDraw('red')}>
+          <Text style={styles.buttonText}>Rot</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.blackButton} onPress={() => handleDraw('black')}>
+          <Text style={styles.buttonText}>Schwarz</Text>
+        </TouchableOpacity>
+      </View>
 
-col1, col2, col3 = st.columns([1,1,1])
-with col1:
-    if st.button("🔴 Rot gezogen"):
-        ziehe_farbe("rot")
-with col2:
-    if st.button("⚫ Schwarz gezogen"):
-        ziehe_farbe("schwarz")
-with col3:
-    if st.button("↩️ Zurück"):
-        rueckgaengig()
+      <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
+        <Text style={styles.undoText}>⤺ Zurück</Text>
+      </TouchableOpacity>
 
-st.subheader("🃏 Verlauf der letzten 5 Ziehungen:")
-if st.session_state.verlauf:
-    cols = st.columns(len(st.session_state.verlauf))
-    for idx, farbe in enumerate(st.session_state.verlauf):
-        if farbe == "rot":
-            cols[idx].image(img_rot, width=80)
-        else:
-            cols[idx].image(img_schwarz, width=80)
-else:
-    st.write("Noch keine Ziehungen.")
+      <View style={styles.probabilityContainer}>
+        <Text style={styles.probability}>Aktuelle Wahrscheinlichkeit:</Text>
+        <Text style={styles.probability}>🟥 Rot: {(actualProbability.red * 100).toFixed(1)}%</Text>
+        <Text style={styles.probability}>⬛ Schwarz: {(actualProbability.black * 100).toFixed(1)}%</Text>
+        <Text style={styles.hintText}>(Erwartet: 50% / 50%)</Text>
+      </View>
+    </View>
+  );
+}
 
-gesamt = st.session_state.rot + st.session_state.schwarz
-
-if gesamt > 0:
-    p_emp_rot = st.session_state.rot / gesamt
-    p_emp_schwarz = st.session_state.schwarz / gesamt
-else:
-    p_emp_rot = p_emp_schwarz = 0.5
-
-p_exp_rot = 0.5
-p_exp_schwarz = 0.5
-
-st.subheader("📊 Wahrscheinlichkeiten für die nächste Karte:")
-st.write("**Empirisch geschätzt (basierend auf bisherigen Ziehungen):**")
-st.write(f"🔴 Rot: {p_emp_rot:.2%}")
-st.write(f"⚫ Schwarz: {p_emp_schwarz:.2%}")
-
-st.write("**Erwartet (theoretisch):**")
-st.write(f"🔴 Rot: {p_exp_rot:.2%}")
-st.write(f"⚫ Schwarz: {p_exp_schwarz:.2%}")
-
-st.write("---")
-st.write("### Beispiel zur Interpretation:")
-st.write("""
-Wenn du z.B. bisher 4x Schwarz und 1x Rot gezogen hast, ist die empirische Wahrscheinlichkeit für Rot nur 20%,  
-aber die erwartete Wahrscheinlichkeit bleibt bei 50%.  
-Das bedeutet: Die bisherige Beobachtung zeigt eine Schieflage,  
-aber die theoretische Chance für die nächste Karte ist unverändert 50% / 50%.
-""")
-
-if st.button("🔄 Zurücksetzen"):
-    st.session_state.verlauf = []
-    st.session_state.rot = 0
-    st.session_state.schwarz = 0
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  historyContainer: { marginBottom: 20, alignItems: 'center' },
+  historyLabel: { fontSize: 16 },
+  history: { fontSize: 30, marginTop: 10 },
+  buttonRow: { flexDirection: 'row', marginVertical: 20 },
+  redButton: { backgroundColor: '#e74c3c', padding: 15, borderRadius: 10, marginHorizontal: 10 },
+  blackButton: { backgroundColor: '#2c3e50', padding: 15, borderRadius: 10, marginHorizontal: 10 },
+  buttonText: { color: 'white', fontWeight: 'bold' },
+  undoButton: { marginBottom: 20 },
+  undoText: { color: '#555', fontSize: 16 },
+  probabilityContainer: { alignItems: 'center' },
+  probability: { fontSize: 16, marginVertical: 2 },
+  hintText: { fontSize: 12, color: '#999', marginTop: 10 },
+});
