@@ -17,8 +17,12 @@ if 'history_all' not in st.session_state:
 if 'model' not in st.session_state:
     st.session_state.model = None
 
+if 'trained_X' not in st.session_state:
+    st.session_state.trained_X = []
+    st.session_state.trained_y = []
+
+# Funktionen
 def train_model_from_history():
-    # Trainingsdaten generieren aus history_all (5er Sequenzen)
     data = st.session_state.history_all
     X, y = [], []
     for i in range(len(data) - 5):
@@ -30,7 +34,6 @@ def train_model_from_history():
         model.fit(np.array(X), np.array(y))
         st.session_state.model = model
 
-# Eingabe-Handling
 def add_draw(color):
     st.session_state.history_all.append(color)
     if len(st.session_state.history_all) >= 6:
@@ -44,12 +47,18 @@ def undo_draw():
         else:
             st.session_state.model = None
 
-# Anzeige letzter 5
+def reset_all():
+    st.session_state.history_all = []
+    st.session_state.model = None
+    st.session_state.trained_X = []
+    st.session_state.trained_y = []
+
+# Anzeige letzter 5 Züge
 st.subheader("Letzte 5 Ziehungen:")
 st.markdown("".join([emoji_map[c] for c in st.session_state.history_all[-5:]]))
 
-# Buttons
-col1, col2, col3 = st.columns([1, 1, 1])
+# Buttons inkl. Reset mit Neuladen
+col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 with col1:
     if st.button("🟥 Rot"):
         add_draw("red")
@@ -59,6 +68,10 @@ with col2:
 with col3:
     if st.button("⤺ Zurück"):
         undo_draw()
+with col4:
+    if st.button("🧹 Reset"):
+        reset_all()
+        st.experimental_rerun()
 
 # Vorhersage
 if len(st.session_state.history_all) < 6:
@@ -90,4 +103,3 @@ with st.expander("📊 Statistik anzeigen"):
     st.write(f"**Gesamtanzahl Züge:** {total}")
     st.write(f"🟥 **Rot:** {red_count} ({red_pct:.1f} %)")
     st.write(f"⬛ **Schwarz:** {black_count} ({black_pct:.1f} %)")
-
