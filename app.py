@@ -1,92 +1,76 @@
 import streamlit as st
-from PIL import Image
-import os
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
 
-st.set_page_config(page_title="Rot vs. Schwarz mit Verlauf (Bilder)", layout="centered")
-st.title("🎲 Rot-oder-Schwarz Wahrscheinlichkeits-Rechner mit Kartenbildern")
+# Emoji-Zuordnung
+emoji_map = {'red': '🟥', 'black': '⬛'}
+label_map = {0: 'red', 1: 'black'}
+reverse_map = {'red': 0, 'black': 1}
 
-# Kartenbilder laden
-def load_images():
-    img_rot = Image.open("ass_rot.png")
-    img_schwarz = Image.open("ass_schwarz.png")
-    return img_rot, img_schwarz
+st.set_page_config(page_title="Lernendes Orakel", page_icon="🔮")
+st.title("🔮 Lernendes Orakel – Schwarz oder Rot")
 
-# Prüfe, ob Bilder vorhanden sind, sonst Hinweis
-if not (os.path.exists("ass_rot.png") and os.path.exists("ass_schwarz.png")):
-    st.error("Bitte stelle sicher, dass die Dateien 'ass_rot.png' und 'ass_schwarz.png' im gleichen Ordner liegen wie dieses Skript.")
-    st.stop()
+# Initialisierung
+if 'history_all' not in st.session_state:
+    st.session_state.history_all = []
 
-img_rot, img_schwarz = load_images()
+if 'model' not in st.session_state:
+    st.session_state.model = None
 
-# Session State initialisieren
-if "verlauf" not in st.session_state:
-    st.session_state.verlauf = []
-if "rot" not in st.session_state:
-    st.session_state.rot = 0
-if "schwarz" not in st.session_state:
-    st.session_state.schwarz = 0
+def train_model_from_history():
+    # Trainingsdaten generieren aus history_all (5er Sequenzen)
+    data = st.session_state.history_all
+    X, y = [], []
+    for i in range(len(data) - 5):
+        seq = data[i:i+6]
+        X.append([reverse_map[c] for c in seq[:5]])
+        y.append(reverse_map[seq[5]])
+    if X and y:
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        model.fit(np.array(X), np.array(y))
+        st.session_state.model = model
 
-def ziehe_farbe(farbe):
-    st.session_state.verlauf.append(farbe)
-    if len(st.session_state.verlauf) > 5:
-        st.session_state.verlauf.pop(0)
-    if farbe == "rot":
-        st.session_state.rot += 1
-    else:
-        st.session_state.schwarz += 1
+# Eingabe-Handling
+def add_draw(color):
+    st.session_state.history_all.append(color)
+    if len(st.session_state.history_all) >= 6:
+        train_model_from_history()
 
-def rueckgaengig():
-    if st.session_state.verlauf:
-        letzte = st.session_state.verlauf.pop()
-        if letzte == "rot":
-            st.session_state.rot -= 1
+def undo_draw():
+    if st.session_state.history_all:
+        st.session_state.history_all.pop()
+        if len(st.session_state.history_all) >= 6:
+            train_model_from_history()
         else:
-            st.session_state.schwarz -= 1
+            st.session_state.model = None
+
+# Anzeige letzter 5
+st.subheader("Letzte 5 Ziehungen:")
+st.markdown("".join([emoji_map[c] for c in st.session_state.history_all[-5:]]))
 
 # Buttons
-col1, col2, col3 = st.columns([1,1,1])
+col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
-    if st.button("🔴 Rot gezogen"):
-        ziehe_farbe("rot")
+    if st.button("🟥 Rot"):
+        add_draw("red")
 with col2:
-    if st.button("⚫ Schwarz gezogen"):
-        ziehe_farbe("schwarz")
+    if st.button("⬛ Schwarz"):
+        add_draw("black")
 with col3:
-    if st.button("↩️ Zurück"):
-        rueckgaengig()
+    if st.button("⤺ Zurück"):
+        undo_draw()
 
-# Verlauf mit Bildern anzeigen
-st.subheader("🃏 Verlauf der letzten 5 Ziehungen:")
-if st.session_state.verlauf:
-    cols = st.columns(len(st.session_state.verlauf))
-    for idx, farbe in enumerate(st.session_state.verlauf):
-        if farbe == "rot":
-            cols[idx].image(img_rot, width=80)
-        else:
-            cols[idx].image(img_schwarz, width=80)
-else:
-    st.write("Noch keine Ziehungen.")
+# Vorhersage
+if len(st.session_state.history_all) < 6:
+    remaining = 6 - len(st.session_state.history_all)
+    st.info(f"🔄 Noch {remaining} Eingabe{'n' if remaining != 1 else ''}, bis Vorhersagen verfügbar sind.")
+elif st.session_state.model:
+    input_seq = [reverse_map[c] for c in st.session_state.history_all[-5:]]
+    prediction = st.session_state.model.predict([input_seq])[0]
+    probabilities = st.session_state.model.predict_proba([input_seq])[0]
 
-# Wahrscheinlichkeiten anzeigen
-gesamt = st.session_state.rot + st.session_state.schwarz
-
-st.subheader("📊 Bisherige Ziehungen:")
-st.write(f"🔴 Rot: {st.session_state.rot}")
-st.write(f"⚫ Schwarz: {st.session_state.schwarz}")
-st.write(f"📦 Gesamt: {gesamt}")
-
-st.subheader("🔮 Wahrscheinlichkeit für die nächste Karte:")
-if gesamt == 0:
-    st.info("Noch keine Ziehungen – theoretisch 50 % / 50 %")
-    p_rot, p_schwarz = 0.5, 0.5
-else:
-    p_rot = st.session_state.rot / gesamt
-    p_schwarz = st.session_state.schwarz / gesamt
-    st.success(f"🔴 Rot: {p_rot:.2%}")
-    st.success(f"⚫ Schwarz: {p_schwarz:.2%}")
-
-# Reset Button
-if st.button("🔄 Zurücksetzen"):
-    st.session_state.verlauf = []
-    st.session_state.rot = 0
-    st.session_state.schwarz = 0
+    st.subheader("🔮 Orakel sagt:")
+    st.markdown(f"**Nächste Karte:** {emoji_map[label_map[prediction]]}")
+    st.markdown(f"**🟥 Rot:** {probabilities[0]*100:.1f}%")
+    st.markdown(f"**⬛ Schwarz:** {probabilities[1]*100:.1f}%")
+    st.caption("Hinweis: Das Orakel berücksichtigt alle bisherigen Eingaben – es erkennt scheinbare Muster, aber keine echten Wahrscheinlichkeiten.")
