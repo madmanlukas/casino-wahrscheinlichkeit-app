@@ -74,3 +74,20 @@ elif st.session_state.model:
     st.markdown(f"**🟥 Rot:** {probabilities[0]*100:.1f}%")
     st.markdown(f"**⬛ Schwarz:** {probabilities[1]*100:.1f}%")
     st.caption("Hinweis: Das Orakel berücksichtigt alle bisherigen Eingaben – es erkennt scheinbare Muster, aber keine echten Wahrscheinlichkeiten.")
+
+# Statistik – aufklappbar
+with st.expander("📊 Statistik anzeigen"):
+    total = len(st.session_state.history_all)
+    red_count = st.session_state.history_all.count("red")
+    black_count = st.session_state.history_all.count("black")
+
+    if total > 0:
+        red_pct = (red_count / total) * 100
+        black_pct = (black_count / total) * 100
+    else:
+        red_pct = black_pct = 0
+
+    st.write(f"**Gesamtanzahl Züge:** {total}")
+    st.write(f"🟥 **Rot:** {red_count} ({red_pct:.1f} %)")
+    st.write(f"⬛ **Schwarz:** {black_count} ({black_pct:.1f} %)")
+
