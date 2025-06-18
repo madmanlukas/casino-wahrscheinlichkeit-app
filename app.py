@@ -1,8 +1,7 @@
-# app.py
-
 import streamlit as st
 
-st.title("🎲 Wahrscheinlichkeits-Rechner: Rot oder Schwarz")
+st.set_page_config(page_title="Rot vs. Schwarz", layout="centered")
+st.title("🎲 Rot-oder-Schwarz-Wahrscheinlichkeits-Rechner")
 
 if "rot" not in st.session_state:
     st.session_state.rot = 0
@@ -24,11 +23,10 @@ st.write(f"🔴 Rot: {st.session_state.rot}")
 st.write(f"⚫ Schwarz: {st.session_state.schwarz}")
 st.write(f"📦 Gesamt: {gesamt}")
 
-st.subheader("🔮 Wahrscheinlichkeit für NÄCHSTE Karte:")
+st.subheader("🔮 Nächste Karte – Wahrscheinlichkeit:")
 if gesamt == 0:
-    st.info("Noch keine Ziehungen – Wahrscheinlichkeit ist 50 % / 50 %")
-    p_rot = 0.5
-    p_schwarz = 0.5
+    st.info("Noch keine Ziehungen – theoretisch 50 % / 50 %")
+    p_rot, p_schwarz = 0.5, 0.5
 else:
     p_rot = st.session_state.rot / gesamt
     p_schwarz = st.session_state.schwarz / gesamt
@@ -39,3 +37,4 @@ st.success(f"⚫ Schwarz: {p_schwarz:.2%}")
 if st.button("🔄 Zurücksetzen"):
     st.session_state.rot = 0
     st.session_state.schwarz = 0
+
