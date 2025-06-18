@@ -1,85 +1,52 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import streamlit as st
 
-export default function App() {
-  const [history, setHistory] = useState([]);
-  
-  const handleDraw = (color) => {
-    const newHistory = [...history, color].slice(-5); // nur die letzten 5
-    setHistory(newHistory);
-  };
+st.set_page_config(page_title="Schwarz oder Rot", page_icon="🃏")
 
-  const handleUndo = () => {
-    setHistory(history.slice(0, -1));
-  };
+# Initialisierung des Session-State
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
-  const redCount = history.filter(c => c === 'red').length;
-  const blackCount = history.filter(c => c === 'black').length;
-  const total = redCount + blackCount;
+# Ziehung hinzufügen
+def add_draw(color):
+    st.session_state.history.append(color)
+    if len(st.session_state.history) > 5:
+        st.session_state.history.pop(0)
 
-  const expectedProbability = {
-    red: 0.5,
-    black: 0.5,
-  };
+# Letzte Ziehung entfernen
+def undo_draw():
+    if st.session_state.history:
+        st.session_state.history.pop()
 
-  const actualProbability = {
-    red: total > 0 ? redCount / total : 0.5,
-    black: total > 0 ? blackCount / total : 0.5,
-  };
+# Anzeige
+st.title("🃏 Schwarz oder Rot - Wahrscheinlichkeitsrechner")
 
-  const renderEmoji = (color) => {
-    return color === 'red' ? '🟥' : '⬛';
-  };
+# Verlauf anzeigen
+st.subheader("Letzte 5 Ziehungen:")
+emoji_map = {'red': '🟥', 'black': '⬛'}
+st.markdown("".join(emoji_map[c] for c in st.session_state.history))
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Schwarz oder Rot – Wahrscheinlichkeitsrechner</Text>
+# Buttons
+col1, col2, col3 = st.columns([1, 1, 1])
+with col1:
+    if st.button("🟥 Rot"):
+        add_draw('red')
+with col2:
+    if st.button("⬛ Schwarz"):
+        add_draw('black')
+with col3:
+    if st.button("⤺ Zurück"):
+        undo_draw()
 
-      <View style={styles.historyContainer}>
-        <Text style={styles.historyLabel}>Letzte 5 Ziehungen:</Text>
-        <Text style={styles.history}>
-          {history.map((color, index) => (
-            <Text key={index}>{renderEmoji(color)} </Text>
-          ))}
-        </Text>
-      </View>
+# Wahrscheinlichkeiten berechnen
+red_count = st.session_state.history.count('red')
+black_count = st.session_state.history.count('black')
+total = red_count + black_count
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.redButton} onPress={() => handleDraw('red')}>
-          <Text style={styles.buttonText}>Rot</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.blackButton} onPress={() => handleDraw('black')}>
-          <Text style={styles.buttonText}>Schwarz</Text>
-        </TouchableOpacity>
-      </View>
+st.subheader("Wahrscheinlichkeiten:")
+if total > 0:
+    st.write(f"🟥 Rot: {red_count / total:.1%}")
+    st.write(f"⬛ Schwarz: {black_count / total:.1%}")
+else:
+    st.write("Noch keine Ziehungen")
 
-      <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
-        <Text style={styles.undoText}>⤺ Zurück</Text>
-      </TouchableOpacity>
-
-      <View style={styles.probabilityContainer}>
-        <Text style={styles.probability}>Aktuelle Wahrscheinlichkeit:</Text>
-        <Text style={styles.probability}>🟥 Rot: {(actualProbability.red * 100).toFixed(1)}%</Text>
-        <Text style={styles.probability}>⬛ Schwarz: {(actualProbability.black * 100).toFixed(1)}%</Text>
-        <Text style={styles.hintText}>(Erwartet: 50% / 50%)</Text>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  historyContainer: { marginBottom: 20, alignItems: 'center' },
-  historyLabel: { fontSize: 16 },
-  history: { fontSize: 30, marginTop: 10 },
-  buttonRow: { flexDirection: 'row', marginVertical: 20 },
-  redButton: { backgroundColor: '#e74c3c', padding: 15, borderRadius: 10, marginHorizontal: 10 },
-  blackButton: { backgroundColor: '#2c3e50', padding: 15, borderRadius: 10, marginHorizontal: 10 },
-  buttonText: { color: 'white', fontWeight: 'bold' },
-  undoButton: { marginBottom: 20 },
-  undoText: { color: '#555', fontSize: 16 },
-  probabilityContainer: { alignItems: 'center' },
-  probability: { fontSize: 16, marginVertical: 2 },
-  hintText: { fontSize: 12, color: '#999', marginTop: 10 },
-});
+st.caption("Erwartete Wahrscheinlichkeit: 50% Rot / 50% Schwarz")
